@@ -60,18 +60,18 @@ python3 -m py_compile app.py
 curl -s http://127.0.0.1:9010/cme/services/ping
 ```
 
-## Getting external `ws4kp` image assets
+## External `ws4kp` source checkout
 
-Clone the external repo:
+This repository does ***not*** vendor the full upstream `ws4kp` project.
 
-```bash
-git clone https://github.com/netbymatt/ws4kp
+For local asset reference work, clone it beside the app as an ignored working copy:
+
+```text
+git clone https://github.com/netbymatt/ws4kp ws4kp
 ```
 
-Verify:
+The `ws4kp/` directory is ignored by this repository. Runtime icon assets used by this app live under:
 
-```bash
-ls ws4kp/
+```text
+icons/ws4kp18/
 ```
-
-If it exists, you're good to go.
