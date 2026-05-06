@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Virtualenvs
+venv/
+.venv/
+
+# Local config / secrets
+.env
+.env.*
+*.local
+
+# Runtime artifacts
+*.log
+*.pid
+*.sqlite
+*.sqlite3
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# ws4kp assets dir
+ws4kp/*
+.ws4kp/
+
+# External upstream checkout; not part of this repo
+/ws4kp/
