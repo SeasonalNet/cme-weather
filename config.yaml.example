@@ -1,0 +1,43 @@
+# cme-weather runtime configuration.
+#
+# Copy this file to config.yaml, then edit config.yaml for the local host:
+#
+#   cp config.yaml.example config.yaml
+#   nano config.yaml
+#
+# config.yaml is intentionally ignored by git. Environment variables may still
+# override selected values for systemd or emergency deployment changes.
+
+app:
+  name: SeasonalCMEWeather
+  bind_host: 127.0.0.1
+  bind_port: 9010
+  public_base_path: /cme/services
+
+http:
+  timeout_seconds: 4.5
+
+cache:
+  ttl_seconds: 60
+
+nws:
+  # NWS asks clients to send a meaningful User-Agent with contact information.
+  base_url: https://api.weather.gov
+  user_agent: "(seasonalnet.org, info@seasonalnet.org)"
+
+zippopotam:
+  base_url: https://api.zippopotam.us
+
+icons:
+  ws_icon_dir: /opt/cme-weather/icons/ws4kp18
+  max_icon_index: 9
+
+weather:
+  default_query: "90210"
+  max_alerts: 6
+  fallback_daytime: true
+
+alerts:
+  headline_clip_chars: 300
+  description_clip_chars: 900
+  instruction_clip_chars: 500
