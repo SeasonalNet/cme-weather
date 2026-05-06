@@ -66,7 +66,7 @@ This repository does ***not*** vendor the full upstream `ws4kp` project.
 
 For local asset reference work, clone it beside the app as an ignored working copy:
 
-```text
+```bash
 git clone https://github.com/netbymatt/ws4kp ws4kp
 ```
 
