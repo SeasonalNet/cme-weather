@@ -18,7 +18,20 @@ http:
   timeout_seconds: 4.5
 
 cache:
+  # Legacy/default TTL retained for callers that do not request a data-specific TTL.
   ttl_seconds: 60
+
+  # Data-specific TTLs keep slow-changing metadata hot without making alerts stale.
+  locations_ttl_seconds: 86400
+  points_ttl_seconds: 21600
+  stations_ttl_seconds: 21600
+  observations_ttl_seconds: 120
+  alerts_ttl_seconds: 60
+  forecast_ttl_seconds: 900
+
+  # Serve cached upstream data for this long after a normal TTL expires when
+  # the upstream request fails. Set to 0 to disable stale-if-error behavior.
+  stale_if_error_seconds: 1800
 
 nws:
   # NWS asks clients to send a meaningful User-Agent with contact information.
@@ -41,3 +54,11 @@ alerts:
   headline_clip_chars: 300
   description_clip_chars: 900
   instruction_clip_chars: 500
+  page_size: 6
+
+  # Optional case-insensitive event substring -> Cisco icon index mapping.
+  # Example:
+  # icon_overrides:
+  #   tornado warning: 6
+  #   special weather statement: 9
+  icon_overrides: {}

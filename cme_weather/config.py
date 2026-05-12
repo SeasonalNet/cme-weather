@@ -33,6 +33,13 @@ class HttpConfig:
 @dataclass(frozen=True)
 class CacheConfig:
     ttl_seconds: int
+    locations_ttl_seconds: int
+    points_ttl_seconds: int
+    stations_ttl_seconds: int
+    observations_ttl_seconds: int
+    alerts_ttl_seconds: int
+    forecast_ttl_seconds: int
+    stale_if_error_seconds: int
 
 
 @dataclass(frozen=True)
@@ -64,6 +71,8 @@ class AlertsConfig:
     headline_clip_chars: int
     description_clip_chars: int
     instruction_clip_chars: int
+    page_size: int
+    icon_overrides: Dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -91,6 +100,13 @@ DEFAULTS: Dict[str, Any] = {
     },
     "cache": {
         "ttl_seconds": 60,
+        "locations_ttl_seconds": 86400,
+        "points_ttl_seconds": 21600,
+        "stations_ttl_seconds": 21600,
+        "observations_ttl_seconds": 120,
+        "alerts_ttl_seconds": 60,
+        "forecast_ttl_seconds": 900,
+        "stale_if_error_seconds": 1800,
     },
     "nws": {
         "base_url": "https://api.weather.gov",
@@ -112,6 +128,8 @@ DEFAULTS: Dict[str, Any] = {
         "headline_clip_chars": 300,
         "description_clip_chars": 900,
         "instruction_clip_chars": 500,
+        "page_size": 6,
+        "icon_overrides": {},
     },
 }
 
@@ -175,6 +193,13 @@ def _apply_env_overrides(config: Dict[str, Any], env: Mapping[str, str]) -> None
         "CME_WEATHER_PUBLIC_BASE_PATH": ("app", "public_base_path"),
         "CME_WEATHER_HTTP_TIMEOUT_SECONDS": ("http", "timeout_seconds"),
         "CME_WEATHER_CACHE_TTL_SECONDS": ("cache", "ttl_seconds"),
+        "CME_WEATHER_CACHE_LOCATIONS_TTL_SECONDS": ("cache", "locations_ttl_seconds"),
+        "CME_WEATHER_CACHE_POINTS_TTL_SECONDS": ("cache", "points_ttl_seconds"),
+        "CME_WEATHER_CACHE_STATIONS_TTL_SECONDS": ("cache", "stations_ttl_seconds"),
+        "CME_WEATHER_CACHE_OBSERVATIONS_TTL_SECONDS": ("cache", "observations_ttl_seconds"),
+        "CME_WEATHER_CACHE_ALERTS_TTL_SECONDS": ("cache", "alerts_ttl_seconds"),
+        "CME_WEATHER_CACHE_FORECAST_TTL_SECONDS": ("cache", "forecast_ttl_seconds"),
+        "CME_WEATHER_CACHE_STALE_IF_ERROR_SECONDS": ("cache", "stale_if_error_seconds"),
         "CME_WEATHER_NWS_BASE_URL": ("nws", "base_url"),
         "CME_WEATHER_NWS_USER_AGENT": ("nws", "user_agent"),
         "CME_WEATHER_ZIPPOTAM_BASE_URL": ("zippopotam", "base_url"),
@@ -186,6 +211,7 @@ def _apply_env_overrides(config: Dict[str, Any], env: Mapping[str, str]) -> None
         "CME_WEATHER_ALERT_HEADLINE_CLIP_CHARS": ("alerts", "headline_clip_chars"),
         "CME_WEATHER_ALERT_DESCRIPTION_CLIP_CHARS": ("alerts", "description_clip_chars"),
         "CME_WEATHER_ALERT_INSTRUCTION_CLIP_CHARS": ("alerts", "instruction_clip_chars"),
+        "CME_WEATHER_ALERT_PAGE_SIZE": ("alerts", "page_size"),
     }
     for env_name, path in legacy_mappings.items():
         _set_from_env(config, env, env_name, path)
@@ -268,9 +294,19 @@ def _build_settings(config: Mapping[str, Any], config_path: Optional[Path]) -> S
     if timeout_seconds <= 0:
         raise ConfigError("http.timeout_seconds must be greater than zero")
 
-    ttl_seconds = _int(cache, "ttl_seconds")
-    if ttl_seconds < 0:
-        raise ConfigError("cache.ttl_seconds must be zero or greater")
+    cache_values = {
+        "ttl_seconds": _int(cache, "ttl_seconds"),
+        "locations_ttl_seconds": _int(cache, "locations_ttl_seconds"),
+        "points_ttl_seconds": _int(cache, "points_ttl_seconds"),
+        "stations_ttl_seconds": _int(cache, "stations_ttl_seconds"),
+        "observations_ttl_seconds": _int(cache, "observations_ttl_seconds"),
+        "alerts_ttl_seconds": _int(cache, "alerts_ttl_seconds"),
+        "forecast_ttl_seconds": _int(cache, "forecast_ttl_seconds"),
+        "stale_if_error_seconds": _int(cache, "stale_if_error_seconds"),
+    }
+    for key, value in cache_values.items():
+        if value < 0:
+            raise ConfigError(f"cache.{key} must be zero or greater")
 
     max_icon_index = _int(icons, "max_icon_index")
     if max_icon_index < 0:
@@ -280,12 +316,26 @@ def _build_settings(config: Mapping[str, Any], config_path: Optional[Path]) -> S
     if max_alerts < 0:
         raise ConfigError("weather.max_alerts must be zero or greater")
 
-    clip_values = {
+    alert_icon_overrides_raw = alerts.get("icon_overrides", {})
+    if not isinstance(alert_icon_overrides_raw, Mapping):
+        raise ConfigError("alerts.icon_overrides must be a mapping")
+    alert_icon_overrides: Dict[str, int] = {}
+    for key, value in alert_icon_overrides_raw.items():
+        try:
+            icon_index = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ConfigError("alerts.icon_overrides values must be integers") from exc
+        if icon_index < 0:
+            raise ConfigError("alerts.icon_overrides values must be zero or greater")
+        alert_icon_overrides[str(key).lower()] = icon_index
+
+    alert_values = {
         "headline_clip_chars": _int(alerts, "headline_clip_chars"),
         "description_clip_chars": _int(alerts, "description_clip_chars"),
         "instruction_clip_chars": _int(alerts, "instruction_clip_chars"),
+        "page_size": _int(alerts, "page_size"),
     }
-    for key, value in clip_values.items():
+    for key, value in alert_values.items():
         if value < 0:
             raise ConfigError(f"alerts.{key} must be zero or greater")
 
@@ -297,7 +347,7 @@ def _build_settings(config: Mapping[str, Any], config_path: Optional[Path]) -> S
             public_base_path=_base_path(_str(app, "public_base_path")),
         ),
         http=HttpConfig(timeout_seconds=timeout_seconds),
-        cache=CacheConfig(ttl_seconds=ttl_seconds),
+        cache=CacheConfig(**cache_values),
         nws=NwsConfig(
             base_url=_strip_trailing_slash(_str(nws, "base_url"), "nws.base_url"),
             user_agent=_str(nws, "user_agent"),
@@ -314,7 +364,7 @@ def _build_settings(config: Mapping[str, Any], config_path: Optional[Path]) -> S
             max_alerts=max_alerts,
             fallback_daytime=_bool(weather, "fallback_daytime"),
         ),
-        alerts=AlertsConfig(**clip_values),
+        alerts=AlertsConfig(**alert_values, icon_overrides=alert_icon_overrides),
         config_path=config_path,
     )
 

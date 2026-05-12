@@ -15,16 +15,18 @@ It serves Cisco phone XML menus and text pages under `/cme/services/`, including
 - `cme_weather/renderers/` contains Cisco XML rendering helpers.
 - `cme_weather/icons.py` contains icon classification, loading, and fallback PNG generation.
 - `cme_weather/config.py` contains config loading and validation.
+- `wsgi.py` exposes the WSGI application for Gunicorn or other WSGI servers.
+- `tests/` contains pytest coverage for config, cache, service orchestration, and Flask routes.
 
 ## Rules
 
 - Keep endpoints compatible with Cisco IP Phone XML service payloads.
 - Keep the default public service path rooted under `/cme/services/`.
-- Preserve the root `app.py` entrypoint unless the deployment documentation and systemd wrapper are intentionally changed.
+- Preserve the root `app.py` entrypoint for local/development compatibility. Production-style deployment should use `wsgi:app` through Gunicorn or another WSGI server.
 - Keep Flask route handlers thin. Push upstream API access and menu-generation decisions into `clients/` and `services/`.
 - Use `config.yaml` for normal service configuration. Commit only `config.yaml.example`; do not commit local `config.yaml` files.
 - Environment variables may override config values for deployment-specific or emergency changes.
-- Keep NWS API access polite: preserve the User-Agent behavior and caching.
+- Keep NWS API access polite: preserve the User-Agent behavior, data-specific caching, and stale-if-error behavior.
 - Do not commit virtualenvs, bytecode, caches, logs, secrets, local `.env` files, or local `config.yaml` files.
 - Do not add large generated assets unless they are required runtime assets.
 - Treat icon/source artwork licensing carefully before committing it to a public repository.
@@ -44,10 +46,13 @@ Service-scoped environment variable overrides are preferred over legacy names. L
 
 Before committing app changes, run:
 
-    python3 -m py_compile app.py
-    python3 -m compileall cme_weather
+    python3 -m py_compile app.py wsgi.py
+    python3 -m compileall cme_weather tests
+    python3 -m pytest
 
 When the service is running locally, also check:
 
+    curl -s http://127.0.0.1:9010/cme/services/healthz
+    curl -s http://127.0.0.1:9010/cme/services/status.json
     curl -s http://127.0.0.1:9010/cme/services/ping
     curl -s http://127.0.0.1:9010/cme/services/

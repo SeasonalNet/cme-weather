@@ -5,6 +5,7 @@ from typing import Tuple
 from urllib.parse import quote
 
 from cme_weather.clients.http import HttpJsonClient
+from cme_weather.config import CacheConfig
 
 ZIP_RE = re.compile(r"^\d{5}(-\d{4})?$", re.ASCII)
 
@@ -12,9 +13,10 @@ ZIP_RE = re.compile(r"^\d{5}(-\d{4})?$", re.ASCII)
 class ZippopotamClient:
     """Location lookup client backed by api.zippopotam.us."""
 
-    def __init__(self, *, base_url: str, http: HttpJsonClient) -> None:
+    def __init__(self, *, base_url: str, http: HttpJsonClient, cache_config: CacheConfig) -> None:
         self.base_url = base_url.rstrip("/")
         self.http = http
+        self.cache_config = cache_config
 
     def latlon(self, query: str) -> Tuple[float, float, str]:
         query = (query or "").strip()
@@ -22,7 +24,11 @@ class ZippopotamClient:
             raise ValueError("empty query")
 
         if ZIP_RE.match(query):
-            data = self.http.get_json(f"{self.base_url}/us/{query[:5]}")
+            data = self.http.get_json(
+                f"{self.base_url}/us/{query[:5]}",
+                cache_ttl_seconds=self.cache_config.locations_ttl_seconds,
+                stale_if_error_seconds=self.cache_config.stale_if_error_seconds,
+            )
             place = data["places"][0]
             lat = float(place["latitude"])
             lon = float(place["longitude"])
@@ -35,7 +41,11 @@ class ZippopotamClient:
 
         city = match.group(1).strip()
         state = match.group(2).strip().lower()
-        data = self.http.get_json(f"{self.base_url}/us/{state}/{quote(city)}")
+        data = self.http.get_json(
+            f"{self.base_url}/us/{state}/{quote(city)}",
+            cache_ttl_seconds=self.cache_config.locations_ttl_seconds,
+            stale_if_error_seconds=self.cache_config.stale_if_error_seconds,
+        )
         place = data["places"][0]
         lat = float(place["latitude"])
         lon = float(place["longitude"])

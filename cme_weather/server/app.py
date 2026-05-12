@@ -10,21 +10,37 @@ from cme_weather.config import Settings, load_config
 from cme_weather.server.routes import register_routes
 
 
-def create_app(settings: Settings | None = None) -> Flask:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    cache: TtlCache | None = None,
+    http: HttpJsonClient | None = None,
+    locations: ZippopotamClient | None = None,
+    nws: NwsClient | None = None,
+) -> Flask:
     settings = settings or load_config()
 
     app = Flask(__name__)
     app.config["CME_WEATHER_SETTINGS"] = settings
-    cache = TtlCache(settings.cache.ttl_seconds)
-    http = HttpJsonClient(
+
+    cache = cache or TtlCache(
+        settings.cache.ttl_seconds,
+        stale_if_error_seconds=settings.cache.stale_if_error_seconds,
+    )
+    http = http or HttpJsonClient(
         cache=cache,
         timeout_seconds=settings.http.timeout_seconds,
         user_agent=settings.nws.user_agent,
     )
-    locations = ZippopotamClient(base_url=settings.zippopotam.base_url, http=http)
-    nws = NwsClient(base_url=settings.nws.base_url, http=http)
+    locations = locations or ZippopotamClient(
+        base_url=settings.zippopotam.base_url,
+        http=http,
+        cache_config=settings.cache,
+    )
+    nws = nws or NwsClient(base_url=settings.nws.base_url, http=http, cache_config=settings.cache)
 
-    register_routes(app, settings=settings, locations=locations, nws=nws)
+    app.config["CME_WEATHER_CACHE"] = cache
+    register_routes(app, settings=settings, cache=cache, locations=locations, nws=nws)
     return app
 
 
