@@ -13,7 +13,14 @@ from cme_weather.clients.nws import NwsClient
 from cme_weather.clients.zippopotam import ZippopotamClient
 from cme_weather.config import Settings
 from cme_weather.icons import icon_png
-from cme_weather.renderers.cisco_xml import escape_xml, input_page, text_page, xml_response
+from cme_weather.renderers.cisco_xml import (
+    SoftKeyItem,
+    escape_xml,
+    input_page,
+    soft_key_items,
+    text_page,
+    xml_response,
+)
 from cme_weather.services.weather import (
     AlertMenuItem,
     ForecastPeriod,
@@ -49,7 +56,7 @@ def register_routes(
         url = f"{abs_url(route_path(endpoint))}?q={quote(query, safe='')}"
         for key, value in params.items():
             url += f"&{quote(str(key), safe='')}={quote(str(value), safe='')}"
-        return escape_xml(url)
+        return url
 
     def icon_url(index: int, *, day_night: str = "1") -> str:
         url = f"{abs_url(route_path('/weather/icon.png'))}?i={index}"
@@ -68,9 +75,25 @@ def register_routes(
         return f"""
   <MenuItem>
 {icon_line}    <Name>{escape_xml(name)}</Name>
-    <URL>{url}</URL>
+    <URL>{escape_xml(url)}</URL>
   </MenuItem>
 """.rstrip()
+
+    def weather_input_url() -> str:
+        return abs_url(route_path("/weather"))
+
+    def exit_key(position: int = 4) -> SoftKeyItem:
+        return SoftKeyItem("Exit", "SoftKey:Exit", position)
+
+    def weather_text_softkeys(*, refresh_url: str, alt_key: SoftKeyItem | None = None) -> List[SoftKeyItem]:
+        keys = [
+            SoftKeyItem("Back", "SoftKey:Back", 1),
+            SoftKeyItem("Refresh", refresh_url, 2),
+        ]
+        if alt_key is not None:
+            keys.append(alt_key)
+        keys.append(exit_key())
+        return keys
 
     def weather_data_or_page(query: str) -> WeatherMenuData | Response:
         try:
@@ -144,8 +167,8 @@ def register_routes(
 <CiscoIPPhoneMenu>
   <Title>SeasonalCME</Title>
   <Prompt>Select a service</Prompt>
-{menu_item("Weather", escape_xml(abs_url(route_path('/weather'))))}
-{menu_item("Ping", escape_xml(abs_url(route_path('/ping'))))}
+{menu_item("Weather", abs_url(route_path('/weather')))}
+{menu_item("Ping", abs_url(route_path('/ping')))}
 </CiscoIPPhoneMenu>
 """.strip()
         return xml_response(xml)
@@ -158,6 +181,12 @@ def register_routes(
                 prompt="Enter ZIP or City, ST",
                 url=abs_url(route_path("/weather/show")),
                 default_value=settings.weather.default_query,
+                softkeys=[
+                    SoftKeyItem("Submit", "SoftKey:Submit", 1),
+                    SoftKeyItem("<<", "SoftKey:<<", 2),
+                    SoftKeyItem("Default", show_url("/weather/show", settings.weather.default_query), 3),
+                    SoftKeyItem("Cancel", "SoftKey:Cancel", 4),
+                ],
             )
         )
 
@@ -202,6 +231,12 @@ def register_routes(
   <Prompt>{escape_xml(data.label)}</Prompt>
 {''.join(items)}
 {icon_items(data.day_night)}
+{soft_key_items([
+    SoftKeyItem("Select", "SoftKey:Select", 1),
+    SoftKeyItem("Refresh", show_url("/weather/show", data.query), 2),
+    SoftKeyItem("Change", weather_input_url(), 3),
+    exit_key(),
+])}
 </CiscoIPPhoneIconFileMenu>
 """.strip()
         return xml_response(xml)
@@ -223,7 +258,17 @@ def register_routes(
         lines.append("")
         lines.append(f"Alerts: {data.total_alerts}")
         lines.append(f"Location: {data.label}")
-        return xml_response(text_page(title="Current", prompt=data.label, text="\n".join(lines)))
+        return xml_response(
+            text_page(
+                title="Current",
+                prompt=data.label,
+                text="\n".join(lines),
+                softkeys=weather_text_softkeys(
+                    refresh_url=show_url("/weather/current", data.query),
+                    alt_key=SoftKeyItem("Alerts", show_url("/weather/alerts", data.query), 3),
+                ),
+            )
+        )
 
     @app.get(route_path("/weather/alerts"))
     def weather_alerts() -> Response:
@@ -233,7 +278,17 @@ def register_routes(
             return data
 
         if not data.alerts:
-            return xml_response(text_page(title="Alerts", prompt=data.label, text="No active alerts."))
+            return xml_response(
+                text_page(
+                    title="Alerts",
+                    prompt=data.label,
+                    text="No active alerts.",
+                    softkeys=weather_text_softkeys(
+                        refresh_url=show_url("/weather/alerts", data.query),
+                        alt_key=SoftKeyItem("Current", show_url("/weather/current", data.query), 3),
+                    ),
+                )
+            )
 
         try:
             page = max(0, int(request.args.get("page", "0")))
@@ -259,6 +314,7 @@ def register_routes(
   <Prompt>{escape_xml(data.label)} p{page + 1}/{page_count}</Prompt>
 {''.join(items)}
 {icon_items(data.day_night)}
+{soft_key_items(_alert_list_softkeys(data.query, page=page, page_count=page_count, show_url=show_url, exit_key=exit_key))}
 </CiscoIPPhoneIconFileMenu>
 """.strip()
         return xml_response(xml)
@@ -281,7 +337,18 @@ def register_routes(
                 )
             )
 
-        return xml_response(text_page(title=detail.event, prompt="Active alert", text=detail.body))
+        query = (request.args.get("q", "") or "").strip()
+        softkeys = [SoftKeyItem("Back", "SoftKey:Back", 1)]
+        if query:
+            softkeys.append(SoftKeyItem("List", show_url("/weather/alerts", query), 2))
+            refresh_url = show_url("/weather/alert", query, id=alert_id)
+            refresh_position = 3
+        else:
+            refresh_url = abs_url(route_path("/weather/alert")) + f"?id={quote(alert_id, safe='')}"
+            refresh_position = 2
+        softkeys.append(SoftKeyItem("Refresh", refresh_url, refresh_position))
+        softkeys.append(exit_key())
+        return xml_response(text_page(title=detail.event, prompt="Active alert", text=detail.body, softkeys=softkeys))
 
     @app.get(route_path("/weather/forecast"))
     def weather_forecast() -> Response:
@@ -292,12 +359,52 @@ def register_routes(
             return data
 
         if not data.forecast_periods:
-            return xml_response(text_page(title="Forecast", prompt=data.label, text="Forecast data is unavailable."))
+            return xml_response(
+                text_page(
+                    title="Forecast",
+                    prompt=data.label,
+                    text="Forecast data is unavailable.",
+                    softkeys=weather_text_softkeys(
+                        refresh_url=show_url("/weather/forecast", data.query, mode=mode),
+                        alt_key=SoftKeyItem("Current", show_url("/weather/current", data.query), 3),
+                    ),
+                )
+            )
 
         periods = data.forecast_periods[:2] if mode == "today" else data.forecast_periods[:6]
         title = "Today" if mode == "today" else "3-Day Forecast"
         body = _forecast_text(periods)
-        return xml_response(text_page(title=title, prompt=data.label, text=body))
+        switch_mode = "three-day" if mode == "today" else "today"
+        switch_label = "3-Day" if mode == "today" else "Today"
+        return xml_response(
+            text_page(
+                title=title,
+                prompt=data.label,
+                text=body,
+                softkeys=[
+                    SoftKeyItem("Back", "SoftKey:Back", 1),
+                    SoftKeyItem("Current", show_url("/weather/current", data.query), 2),
+                    SoftKeyItem(switch_label, show_url("/weather/forecast", data.query, mode=switch_mode), 3),
+                    exit_key(),
+                ],
+            )
+        )
+
+
+def _alert_list_softkeys(query: str, *, page: int, page_count: int, show_url, exit_key) -> List[SoftKeyItem]:
+    keys = [SoftKeyItem("Select", "SoftKey:Select", 1)]
+    if page > 0:
+        keys.append(SoftKeyItem("Prev", show_url("/weather/alerts", query, page=page - 1), 2))
+    else:
+        keys.append(SoftKeyItem("Refresh", show_url("/weather/alerts", query, page=page), 2))
+
+    if page + 1 < page_count:
+        keys.append(SoftKeyItem("More", show_url("/weather/alerts", query, page=page + 1), 3))
+    else:
+        keys.append(SoftKeyItem("Back", "SoftKey:Back", 3))
+
+    keys.append(exit_key())
+    return keys
 
 
 def _alert_menu_item(
