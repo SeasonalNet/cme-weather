@@ -1,10 +1,10 @@
-FROM python:3.15-slim@sha256:f11aa5dc9fad216f005cf34262f3f7dedc2369f03bbbd916589c24346519ee3b AS dependencies
+FROM python:3.15-slim@sha256:490c3463f3766091067a01528e6be3208104eebcca11a306beab5de9672ee893 AS dependencies
 
 WORKDIR /build
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-FROM python:3.15-slim@sha256:f11aa5dc9fad216f005cf34262f3f7dedc2369f03bbbd916589c24346519ee3b
+FROM python:3.15-slim@sha256:490c3463f3766091067a01528e6be3208104eebcca11a306beab5de9672ee893
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
