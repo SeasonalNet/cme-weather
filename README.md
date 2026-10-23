@@ -230,3 +230,8 @@ The `ws4kp/` directory is ignored by this repository. Runtime icon assets used b
 ```text
 icons/ws4kp18/
 ```
+
+## Hardened containers
+
+See [CONTAINER_SECURITY.md](CONTAINER_SECURITY.md) for the hardened Compose
+launch, writable paths, and deployment requirements.

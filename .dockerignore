@@ -17,3 +17,9 @@ ws4kp
 tests
 README.md
 DEPLOYMENT.md
+*.pem
+*.key
+*.p12
+secrets
+**/__pycache__
+**/*.pyc
