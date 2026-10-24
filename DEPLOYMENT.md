@@ -6,9 +6,8 @@
 
 ```bash
 cd /opt/cme-weather
-python3 -m venv venv
-. venv/bin/activate
-python -m pip install -r requirements.txt
+uv venv --python 3.15.1 venv
+uv pip install --python venv/bin/python -r requirements.txt
 cp config.yaml.example config.yaml
 nano config.yaml
 ```

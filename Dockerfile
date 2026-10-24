@@ -1,8 +1,11 @@
+FROM ghcr.io/astral-sh/uv:0.13.5 AS uv
+
 FROM python:3.15-slim@sha256:044d5bd747976e21f8bc4d746c3479b19a84bb8ae6261b802acdd26b29036c93 AS dependencies
 
 WORKDIR /build
+COPY --from=uv /uv /uvx /bin/
 COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN uv pip install --prefix=/install --no-cache -r requirements.txt
 
 FROM python:3.15-slim@sha256:044d5bd747976e21f8bc4d746c3479b19a84bb8ae6261b802acdd26b29036c93 AS runtime-files
 
@@ -27,6 +30,12 @@ RUN chmod -R go-w /app \
     && python /tmp/assemble-rootfs.py python /runtime-root
 
 FROM scratch AS runtime
+
+ARG APP_VERSION=0.0.0+unknown
+ARG APP_REVISION=unknown
+ENV APP_VERSION=${APP_VERSION} APP_REVISION=${APP_REVISION}
+LABEL org.opencontainers.image.version="${APP_VERSION}" org.opencontainers.image.revision="${APP_REVISION}"
+
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 CME_WEATHER_CONFIG=/run/config/cme-weather.yaml CME_WEATHER_BIND_HOST=0.0.0.0 CME_WEATHER_BIND_PORT=9010 CME_WEATHER_WS_ICON_DIR=/app/icons/ws4kp18
 COPY --from=runtime-files /runtime-root /
 COPY --from=runtime-files --chown=0:0 /app /app

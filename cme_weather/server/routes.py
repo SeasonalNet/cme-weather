@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from cme_weather import __version__
+
 import logging
 import os
 from math import ceil
@@ -132,7 +134,7 @@ def register_routes(
 
     @app.get(route_path("/healthz"))
     def healthz() -> Response:
-        return jsonify({"ok": True, "service": settings.app.name})
+        return jsonify({"ok": True, "service": settings.app.name, "version": __version__})
 
     @app.get(route_path("/status.json"))
     def status_json() -> Response:
@@ -141,7 +143,7 @@ def register_routes(
         return jsonify(
             {
                 "ok": True,
-                "service": settings.app.name,
+                "service": settings.app.name, "version": __version__,
                 "public_base_path": settings.app.public_base_path,
                 "config_path": config_path,
                 "icons": {

@@ -50,15 +50,14 @@ The Flask app and routes live under `cme_weather/server/`; upstream API access l
 ## Install
 
 ```bash
-python3 -m venv venv
-. venv/bin/activate
-python -m pip install -r requirements.txt
+uv venv --python 3.15.1 venv
+uv pip install --python venv/bin/python -r requirements.txt
 ```
 
 For development/test work:
 
 ```bash
-python -m pip install -r requirements-dev.txt
+uv pip install --python venv/bin/python -r requirements-dev.txt
 ```
 
 ## Configuration
@@ -235,3 +234,7 @@ icons/ws4kp18/
 
 See [CONTAINER_SECURITY.md](CONTAINER_SECURITY.md) for the hardened Compose
 launch, writable paths, and deployment requirements.
+
+## Software versions
+
+See [VERSIONING.md](VERSIONING.md) for Git-derived versions, release tags and local builds.

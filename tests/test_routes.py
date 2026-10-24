@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from cme_weather import __version__
+
 from tests.conftest import make_settings
 from tests.test_weather_service import FakeLocations, FakeNws
 
@@ -18,6 +20,7 @@ def test_healthz_and_status_json() -> None:
     client = make_client()
 
     health = client.get("/cme/services/healthz")
+    assert health.get_json()["version"] == __version__
     assert health.status_code == 200
     assert health.get_json()["ok"] is True
 
