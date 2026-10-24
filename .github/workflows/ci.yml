@@ -66,7 +66,7 @@ jobs:
           if [ -f requirements-dev.txt ]; then uv pip install --python .venv-ci/bin/python -r requirements-dev.txt; fi
           if find . -maxdepth 3 -type d -name tests | grep -q .; then uv pip install --python .venv-ci/bin/python pytest; fi
       - name: Audit Python dependencies
-        run: uv tool run --from pip-audit pip-audit --requirement requirements.txt --requirement requirements-dev.txt
+        run: .venv-bootstrap/bin/uv tool run --from pip-audit pip-audit --requirement requirements.txt --requirement requirements-dev.txt
       - name: Compile Python sources
         run: |
           . .venv-ci/bin/activate
