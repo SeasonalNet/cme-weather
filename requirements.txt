@@ -12,7 +12,7 @@ packaging==26.3
 pillow==13.0.0
 PyYAML==6.0.3
 requests==2.34.2
-setuptools==84.1.0
+setuptools==84.2.1
 urllib3==2.8.0
 Werkzeug==3.1.9
 wheel==0.48.0
