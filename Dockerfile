@@ -1,13 +1,13 @@
 FROM ghcr.io/astral-sh/uv:0.13.6 AS uv
 
-FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913 AS dependencies
+FROM python:3.15-slim@sha256:8c13a3f37a6a5b71498228e902c4b9f51c1f7900d49fabf71f9a650c6120e0d0 AS dependencies
 
 WORKDIR /build
 COPY --from=uv /uv /uvx /bin/
 COPY requirements.txt .
 RUN uv pip install --prefix=/install --no-cache -r requirements.txt
 
-FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913 AS runtime-files
+FROM python:3.15-slim@sha256:8c13a3f37a6a5b71498228e902c4b9f51c1f7900d49fabf71f9a650c6120e0d0 AS runtime-files
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
