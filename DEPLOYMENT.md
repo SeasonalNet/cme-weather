@@ -6,7 +6,7 @@
 
 ```bash
 cd /opt/cme-weather
-uv venv --python 3.15.1 venv
+uv venv --python 3.15.2 venv
 uv pip install --python venv/bin/python -r requirements.txt
 cp config.yaml.example config.yaml
 nano config.yaml
